@@ -31,20 +31,12 @@ static int rel_read_status_raw(USBDEVHANDLE dev, void *raw_data);
 
 static void usage(char *myName)
 {
-    char *p = strrchr(myName, '\\'); /* windows */
-    if (p) myName = p + 1;
-    else p = strrchr(myName, '/'); /* whatever */
-    if (p) myName = p + 1;
-
-    printf("HID USB relay utility, " A_VER_STR " "
-                    "For info: " A_URL "\n"
+    printf("HID USB relay utility, " A_VER_STR " \n"
                     "Usage:\n");
-    printf("  %s on <num>  - turn relay <num> ON\n", myName);
-    printf("  %s off <num> - turn relay <num> OFF\n", myName);
-    printf("  %s state     - print states of the relays\n", myName);
-    printf("  %s enum      - print state of all found relay devices\n", myName);
-    printf("\nParameter ID=XXXXX selects one device if several are connected.\n");
-    printf("Example: %s ID=ABCDE ON 2\n\n", myName);
+    printf("  %s on        - turn relay 1 ON\n", myName);
+    printf("  %s off       - turn relay 1 OFF\n", myName);
+    printf("  %s state     - print states of the relay\n", myName);
+    printf("Example: %s ON\n\n", myName);
 }
 
 
@@ -209,28 +201,12 @@ static int rel_read_status_raw(USBDEVHANDLE dev, void *raw_data)
 }
 
 
-static int rel_onoff( USBDEVHANDLE dev, int is_on, char const *numstr )
+static int rel_onoff( USBDEVHANDLE dev, int is_on )
 {
     unsigned char buffer[10];
     int err = -1;
-    int relaynum = numstr ? atoi(numstr) : 0;
+    int relaynum = 1; // Only single channel relay supported
     
-    if ( numstr && (0 == strcasecmp(numstr,"all")) ) {
-        char x[2] = {'1', 0};
-        int i;
-        for (i = 1; i <= g_max_relay_num; i++) {
-            x[0] = (char)('0' + i);
-            err = rel_onoff(dev, is_on, x);
-            if (err) break;
-        }
-        return err;
-    }
-
-    if ( relaynum <= 0 || relaynum > g_max_relay_num ) {
-        printerr("Invalid relay number. Must be 1-%d or ALL)\n", g_max_relay_num);
-        return 1;
-    }
-
     memset(buffer, 0, sizeof(buffer));
     buffer[0] = 0; /* report # */
     buffer[1] = is_on ? 0xFF : 0xFD;
@@ -272,86 +248,32 @@ static int show_status(USBDEVHANDLE dev)
     } else {
         switch (g_max_relay_num) {
             case 1:
-                printf("Board ID=[%5.5s] State: R1=%s\n", &buffer[1], onoff(0) );
+                printf("%s", onoff(0) );
+		err = 0;
                 break;
-            case 2:
-                printf("Board ID=[%5.5s] State: R1=%s R2=%s\n",
-                    &buffer[1],	onoff(0), onoff(1) );
+            case 2 | 4: // Only relay 1 status is shown though multiple channels exist
+                printf("%s",onoff(0) );
+		err = 0;
                 break;
-            case 4:
-                printf("Board ID=[%5.5s] State: R1=%s R3=%s R1=%s R4=%s\n",
-                    &buffer[1],	onoff(0), onoff(1), onoff(2), onoff(3) );
-                break;
-            default: /* print as bit mask */
+            default: /* Error */
                 printf("Board ID=[%5.5s] State: %2.2X (hex)\n", &buffer[1], (unsigned char)err );
+		err = 1;
                 break;
         }
-        err = 0;
     }
     return err;
 #undef onoff
 }
-
-// Enumerate available relay devices
-
-static int showFunc(USBDEVHANDLE dev, void *context)
-{
-    int err = enumFunc( dev, context );
-    if (err != 0 || g_enumCtx.mydev == 0) // not my device, continue
-        return err;
-
-    show_status(g_enumCtx.mydev);
-    usbhidCloseDevice(g_enumCtx.mydev);
-    g_enumCtx.mydev = 0;
-
-    return 1; // continue
-}
-
-static int show_relays(void)
-{
-    int err;
-    g_enumCtx.mydev = 0;
-
-    err = usbhidEnumDevices(USB_CFG_VENDOR_ID, USB_CFG_DEVICE_ID, &g_enumCtx, showFunc);
-    if ( err )
-    {
-        printerr("Error finding USB relays: %s\n", usbErrorMessage(err));
-        return 1;
-    }
-
-    return 0;
-}
-
 
 int main(int argc, char **argv)
 {
     USBDEVHANDLE dev = 0;
     int         err;
     char const *arg1 = (argc >= 2) ? argv[1] : NULL;
-    char const *arg2 = (argc >= 3) ? argv[2] : NULL;
 
     if ( !arg1 ) {
         usage(argv[0]);
         return 1;
-    }
-
-    if ( strcasecmp(arg1, "enum") == 0 ) {
-        err = show_relays();
-        return err;
-    }
-
-    if ( strncasecmp(arg1, "id=", 3) == 0 ) {
-        /* Set the ID for following commands. else use 1st found device.*/
-        if (strlen(&arg1[3]) != USB_RELAY_ID_STR_LEN) {
-            printerr("ERROR: ID must be %d characters (%s)\n", USB_RELAY_ID_STR_LEN, arg1);
-            return 1;
-        }
-        
-        strcpy(g_enumCtx.id, &arg1[3]);
-
-        // shift following params
-        arg1 = arg2;
-        arg2 = (argc >= 4) ? argv[3] : NULL;
     }
 
     dev = openDevice();
@@ -361,9 +283,9 @@ int main(int argc, char **argv)
     if ( strncasecmp(arg1, "stat", 4) == 0 ) { // stat|state|status
         err = show_status(dev);
     }else if( strcasecmp(arg1, "on" ) == 0) {
-        err = rel_onoff(dev, 1, arg2);
+        err = rel_onoff(dev, 0); // negtaive logic 0=> on
     }else if( strcasecmp(arg1, "off" ) == 0) {
-        err = rel_onoff(dev, 0, arg2);
+        err = rel_onoff(dev, 1); // negative logic 1=> off
     }else {
         usage(argv[0]);
         err = 2;

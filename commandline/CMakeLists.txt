@@ -24,5 +24,6 @@ endif()
 add_library(hidusb-relay SHARED ${SOURCES})
 target_link_libraries(hidusb-relay ${LIBRARIES})
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath,'$ORIGIN'")
 add_executable(hidusb-relay-cmd usbrelay-cmd.c)
 target_link_libraries(hidusb-relay-cmd hidusb-relay)
