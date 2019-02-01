@@ -237,7 +237,7 @@ static int show_status(USBDEVHANDLE dev)
 {
     int err;
     char buffer[10];
-    static const char* on_off[] = {"OFF","ON"};
+    static const char* on_off[] = {"on","off"}; // negative logic relay
 
 #define onoff(n) on_off[!!(err & (1U << n))]
 
