@@ -277,8 +277,19 @@ int main(int argc, char **argv)
     }
 
     dev = openDevice();
+
+    // Handle enum command separately
+    if ( strncasecmp(arg1, "enum", 4) == 0 ) {
+        if ( !dev ) {
+	    printf("%d", 0);
+	}else {
+	    printf("%d", 1);
+	}
+	return 0;
+     }
+
     if ( !dev )
-        return 1;
+ 	 return 1;
 
     if ( strncasecmp(arg1, "stat", 4) == 0 ) { // stat|state|status
         err = show_status(dev);
