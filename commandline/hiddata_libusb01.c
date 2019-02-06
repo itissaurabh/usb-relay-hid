@@ -216,3 +216,8 @@ int usbhidStrerror_r( int err, char *buf, int len)
 
     return snprintf(buf, len, "%s", s);
 }
+
+int usbReset(USBDEVHANDLE usbh)
+{
+	return usb_reset(usbDevHandle(usbh));
+}

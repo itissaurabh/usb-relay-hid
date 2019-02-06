@@ -97,6 +97,13 @@ int usbhidGetReport(USBDEVHANDLE usbh, int reportID, char *buffer, int *len);
  */
 int usbhidStrerror_r(int err, char *buf, int len);
 
+
+/**
+ * reset USB device
+ */
+int usbReset(USBDEVHANDLE usbh);
+
+
 /* ------------------------------------------------------------------------ */
 
 #endif /* __HIDUSB_H_INCLUDED__ */

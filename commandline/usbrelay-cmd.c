@@ -33,6 +33,8 @@ static void usage(char *myName)
 {
     printf("HID USB relay utility, " A_VER_STR " \n"
                     "Usage:\n");
+    printf("  %s check     - check if device present\n", myName);
+    printf("  %s reset     - reset the USB device\n", myName);
     printf("  %s on        - turn relay 1 ON\n", myName);
     printf("  %s off       - turn relay 1 OFF\n", myName);
     printf("  %s state     - print states of the relay\n", myName);
@@ -265,6 +267,11 @@ static int show_status(USBDEVHANDLE dev)
 #undef onoff
 }
 
+static int reset_usbdevice(USBDEVHANDLE dev)
+{
+   return usbReset(dev);
+}
+
 int main(int argc, char **argv)
 {
     USBDEVHANDLE dev = 0;
@@ -278,8 +285,8 @@ int main(int argc, char **argv)
 
     dev = openDevice();
 
-    // Handle enum command separately
-    if ( strncasecmp(arg1, "enum", 4) == 0 ) {
+    // Handle check command separately
+    if ( strcasecmp(arg1, "check") == 0 ) {
         if ( !dev ) {
 	    printf("%d", 0);
 	}else {
@@ -297,6 +304,8 @@ int main(int argc, char **argv)
         err = rel_onoff(dev, 0); // negtaive logic 0=> on
     }else if( strcasecmp(arg1, "off" ) == 0) {
         err = rel_onoff(dev, 1); // negative logic 1=> off
+    }else if( strcasecmp(arg1, "reset" ) == 0) {
+        err = reset_usbdevice(dev);
     }else {
         usage(argv[0]);
         err = 2;
